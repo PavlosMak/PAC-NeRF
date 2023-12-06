@@ -3,5 +3,5 @@ ninja
 tqdm
 imageio
 imageio-ffmpeg
-mmcv
+mmcv-full==1.6.2
 taichi==1.2
