@@ -1,4 +1,5 @@
 import torch
+
 print(f"CUDA Available: {torch.cuda.is_available()}")
 import os
 import json
@@ -11,6 +12,8 @@ import cv2
 from tqdm import tqdm
 from matting import MattingRefine
 import time
+
+import wandb
 
 time0 = time.time()
 
@@ -195,6 +198,11 @@ def train_static(cfg, pnerf, optimizer, start, max_iter, rays_o_all, rays_d_all,
                 'optimizer_state_dict': optimizer.state_dict(),
                 'cfg': pnerf.get_kwargs()
             }, os.path.join(cfg["base_dir"], "model/train_static.pt"))
+            wandb.log({"Static Global Loss": global_loss})
+            # rgbs, depth, bgmaps = pnerf.render_sequence(1, H=cfg["H"], W=cfg["W"], c2w=None, rays_o=..., rays_d=..., viewdirs=...,)
+            rgbs, depth, bgmaps = pnerf.render_sequence(1, H=cfg["H"], W=cfg["W"], rays_o=rays_o_all[0],
+                                                        rays_d=rays_d_all[0], viewdirs=viewdirs_all[0])
+            wandb.log({"Static Renders": wandb.Image(rgbs[0])})
 
 
 def train_velocity(cfg, pnerf, start, rays_o_all, rays_d_all, viewdirs_all, rgb_all, ray_mask_all, point_gt=None):
@@ -276,9 +284,22 @@ def train_dynamic(cfg, pnerf, optimizer, start, rays_o_all, rays_d_all, viewdirs
                 obj = evaluate(max_f, optimizer, False)
                 pnerf.backward(max_f)
                 optimizer.step()
+                state_dict = pnerf.state_dict()
+                v_estimate = state_dict['global_v']
+                E_estimate = 10**state_dict['global_E']
+                nu_estimate = state_dict['global_nu']
+
+                gt_E = torch.tensor(cfg["gt_E"])
+                gt_nu = torch.tensor(cfg["gt_nu"])
+
+                e_log_error = torch.abs(torch.log10(E_estimate) - torch.log10(gt_E))
+                nu_error = torch.abs(nu_estimate - gt_nu)
+
+                wandb.log({"LogE Abs Error": e_log_error, "Nu Abs Error": nu_error})
+
                 torch.save({
                     'epoch': stage + 1,
-                    'model_state_dict': pnerf.state_dict(),
+                    'model_state_dict': state_dict,
                     'optimizer_state_dict': optimizer.state_dict(),
                     'cfg': pnerf.get_kwargs()
                 }, os.path.join(cfg['base_dir'], "model/train_dynamic.pt"))
@@ -301,6 +322,9 @@ if __name__ == '__main__':
     parser = config_parser()
     args = parser.parse_args()
     cfg = mmcv.Config.fromfile(args.config)['cfg']
+
+    run = wandb.init(project="Gaussian Inverse Physics", config=cfg)
+
     rays_o_all, rays_d_all, viewdirs_all, rgb_all, ray_mask_all = load_data(cfg['data_dir'], cfg['n_cameras'],
                                                                             H=cfg['H'], W=cfg['W'])
     pnerf, optimizer, start = create_model_and_optimizer(cfg, 'static', pnerf=None)
