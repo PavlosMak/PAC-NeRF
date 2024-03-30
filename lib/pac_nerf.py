@@ -66,6 +66,7 @@ class PACNeRF(torch.nn.Module):
                                 dx=dx, base_dir=base_dir)
         self.nerf_bs = nerf_bs
         ti.reset()
+        print(taichi_cuda_memory)
         ti.init(arch=ti.cuda, debug=False, fast_math=False, device_memory_fraction=taichi_cuda_memory)
         self.dynamic_observer = DynamicObserver(dtype=dtype, rgbnet_dim=rgbnet_dim, dt=dt, frame_dt=frame_dt, 
                                  particle_chunk_size=particle_chunk_size, cuda_chunk_size=cuda_chunk_size,
