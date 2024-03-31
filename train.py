@@ -6,6 +6,7 @@ import json
 import imageio
 import numpy as np
 from lib.nerf import get_rays_of_a_view
+from lib.pac_nerf import constraint
 from lib import PACNeRF, FullBatchLBFGS
 import mmcv
 import cv2
@@ -286,8 +287,8 @@ def train_dynamic(cfg, pnerf, optimizer, start, rays_o_all, rays_d_all, viewdirs
                 optimizer.step()
                 state_dict = pnerf.state_dict()
                 v_estimate = state_dict['global_v']
-                E_estimate = 10**state_dict['global_E']
-                nu_estimate = state_dict['global_nu']
+                E_estimate = 10 ** state_dict['global_E']
+                nu_estimate = constraint(state_dict['global_nu'], [-0.45, 0.45])
 
                 gt_E = torch.tensor(cfg["gt_E"])
                 gt_nu = torch.tensor(cfg["gt_nu"])
