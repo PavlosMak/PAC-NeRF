@@ -305,6 +305,11 @@ def train_dynamic(cfg, pnerf, optimizer, start, rays_o_all, rays_d_all, viewdirs
                     'cfg': pnerf.get_kwargs()
                 }, os.path.join(cfg['base_dir'], "model/train_dynamic.pt"))
 
+    state_dict = pnerf.state_dict()
+    wandb.run.summary["Final E"] = 10 ** state_dict["global_E"]
+    wandb.run.summary["Final nu"] = constraint(state_dict['global_nu'], [-0.45, 0.45])
+    wandb.run.summary["Final Velocity"] = state_dict['global_v']
+
 
 import argparse
 
