@@ -27,6 +27,8 @@ cfg = dict(
     direct_nerf = False,
     E = 316228,
     nu = 0.25,
+    gt_E = 431721.84004200425,
+    gt_nu = 0.3024067152963475,
     rho = 1000,
     hit_frame = 5,
     physical_params = dict(global_E=1e-1, global_nu=1e-2),
